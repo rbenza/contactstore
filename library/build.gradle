@@ -9,7 +9,7 @@ ext {
     PUBLISH_ARTIFACT_ID = 'contactstore'
 }
 
-apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
+//apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
     kotlinOptions.useIR = true
