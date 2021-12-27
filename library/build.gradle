@@ -14,6 +14,7 @@ ext {
 android {
     kotlinOptions.useIR = true
     compileSdkVersion androidCompileSdkVersion
+//    buildToolsVersion androidBuildToolsVersion
 
     defaultConfig {
         minSdkVersion androidMinSdkVersion
