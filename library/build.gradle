@@ -52,4 +52,5 @@ dependencies {
     androidTestImplementation "androidx.test:core:$testCoreVersion"
     testImplementation "junit:junit:$junitVersion"
     testImplementation "org.assertj:assertj-core:$assertjVersion"
+    implementation 'com.jakewharton.timber:timber:5.0.1'
 }

@@ -6,6 +6,7 @@ import android.net.Uri
 import com.alexstyl.contactstore.uriFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 
 internal fun ContentResolver.runQuery(
     contentUri: Uri,
@@ -14,13 +15,22 @@ internal fun ContentResolver.runQuery(
     selectionArgs: Array<String>? = null,
     sortOrder: String? = null
 ): Cursor? {
-    return query(
-        contentUri,
-        projection,
-        selection,
-        selectionArgs,
-        sortOrder
-    )
+    var cursor: Cursor? = null
+    return try {
+        cursor = query(
+            contentUri,
+            projection,
+            selection,
+            selectionArgs,
+            sortOrder
+        )
+        cursor
+    } catch (e: Exception) {
+        Timber.e(e, "Error running query")
+        cursor?.close()
+        null
+
+    }
 }
 
 internal fun ContentResolver.runQueryFlow(
@@ -33,14 +43,23 @@ internal fun ContentResolver.runQueryFlow(
     return uriFlow(contentUri)
         .startImmediately()
         .map {
-            query(
-                contentUri,
-                projection,
-                selection,
-                selectionArgs,
-                sortOrder
-            )
+            var cursor: Cursor? = null
+            try {
+                cursor = query(
+                    contentUri,
+                    projection,
+                    selection,
+                    selectionArgs,
+                    sortOrder
+                )
+                cursor
+            } catch (e: Exception) {
+                Timber.e(e, "Error running flow query")
+                cursor?.close()
+                null
+            }
         }
+
 }
 
 fun valueIn(values: List<Any>): String {
