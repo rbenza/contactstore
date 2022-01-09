@@ -27,7 +27,7 @@ internal fun ContentResolver.runQuery(
         cursor
     } catch (e: Exception) {
         Timber.e(e, "Error running query")
-        cursor?.close()
+        if (cursor?.isClosed == false) cursor.close()
         null
 
     }
@@ -55,7 +55,7 @@ internal fun ContentResolver.runQueryFlow(
                 cursor
             } catch (e: Exception) {
                 Timber.e(e, "Error running flow query")
-                cursor?.close()
+                if (cursor?.isClosed == false) cursor.close()
                 null
             }
         }
