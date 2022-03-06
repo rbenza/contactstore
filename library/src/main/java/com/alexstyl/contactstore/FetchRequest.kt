@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -21,6 +22,8 @@ public class FetchRequest<T>(
     public fun blockingGet(): T {
         return runBlocking { flow.first() }
     }
+
+    public suspend fun getFirstValue(): T? = flow.firstOrNull()
 
     /**
      * Accepts the given collector and emits values into it.

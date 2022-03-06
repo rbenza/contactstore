@@ -58,6 +58,5 @@ dependencies {
 
     testImplementation "junit:junit:$junitVersion"
     testImplementation "org.assertj:assertj-core:$assertjVersion"
-    testImplementation "org.robolectric:robolectric:$robolectricVersion"
     implementation 'com.jakewharton.timber:timber:5.0.1'
 }
