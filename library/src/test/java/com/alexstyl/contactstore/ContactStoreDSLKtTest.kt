@@ -1,12 +1,15 @@
 package com.alexstyl.contactstore
 
-import kotlinx.coroutines.flow.Flow
+import android.net.Uri
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
-class ContactStoreDSLKtTest {
+@RunWith(RobolectricTestRunner::class)
+internal class ContactStoreDSLKtTest {
 
     @Test
     fun insert(): Unit = runBlocking {
@@ -46,7 +49,7 @@ class ContactStoreDSLKtTest {
                 )
 
                 webAddress(
-                    address = "www.paolo.com",
+                    address = Uri.parse("www.paolo.com"),
                     label = Label.LocationWork
                 )
                 groupMembership(groupId = 123)
@@ -98,7 +101,7 @@ class ContactStoreDSLKtTest {
 
                     webAddresses.add(
                         LabeledValue(
-                            value = WebAddress("www.paolo.com"),
+                            value = WebAddress(Uri.parse("www.paolo.com")),
                             label = Label.LocationWork
                         )
                     )
@@ -118,15 +121,20 @@ class ContactStoreDSLKtTest {
 
         var request: SaveRequest? = null
 
-        override suspend fun execute(request: SaveRequest) {
-            this.request = request
+        override fun execute(builder: SaveRequest.() -> Unit) {
+            this.request = SaveRequest().apply(builder)
         }
 
         override fun fetchContacts(
             predicate: ContactPredicate?,
-            columnsToFetch: List<ContactColumn>
-        ): Flow<List<Contact>> {
-            return emptyFlow()
+            columnsToFetch: List<ContactColumn>,
+            displayNameStyle: DisplayNameStyle
+        ): FetchRequest<List<Contact>> {
+            return FetchRequest(emptyFlow())
+        }
+
+        override fun fetchContactGroups(predicate: GroupsPredicate?): FetchRequest<List<ContactGroup>> {
+            return FetchRequest(emptyFlow())
         }
     }
 }

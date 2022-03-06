@@ -1,70 +1,82 @@
 package com.alexstyl.contactstore
 
+import android.net.Uri
 import android.provider.ContactsContract
 
-data class MutableContactBuilder(
-    var prefix: String = "",
-    var firstName: String = "",
-    var middleName: String = "",
-    var lastName: String = "",
-    var suffix: String = "",
-    var fullNameStyle: Int = ContactsContract.FullNameStyle.UNDEFINED,
-    var phoneticNameStyle: Int = ContactsContract.PhoneticNameStyle.UNDEFINED,
-    var phoneticFirstName: String = "",
-    var phoneticMiddleName: String = "",
-    var phoneticLastName: String = "",
-    var nickname: String = "",
-    var note: String? = null,
-    var jobTitle: String = "",
-    var organization: String = "",
-    var imageData: ImageData? = null,
-    var isStarred: Boolean = false,
+public class MutableContactBuilder(
+    public var prefix: String = "",
+    public var firstName: String = "",
+    public var middleName: String = "",
+    public var lastName: String = "",
+    public var suffix: String = "",
+    public var fullNameStyle: Int = ContactsContract.FullNameStyle.UNDEFINED,
+    public var phoneticNameStyle: Int = ContactsContract.PhoneticNameStyle.UNDEFINED,
+    public var phoneticFirstName: String = "",
+    public var phoneticMiddleName: String = "",
+    public var phoneticLastName: String = "",
+    public var nickname: String = "",
+    public var note: String? = null,
+    public var jobTitle: String = "",
+    public var organization: String = "",
+    public var imageData: ImageData? = null,
+    public var isStarred: Boolean = false,
 ) {
     private val _phones: MutableList<LabeledValue<PhoneNumber>> = mutableListOf()
-    val phones: List<LabeledValue<PhoneNumber>>
+    internal val phones: List<LabeledValue<PhoneNumber>>
         get() = _phones.toList()
 
     private val _mails: MutableList<LabeledValue<MailAddress>> = mutableListOf()
-    val mails: List<LabeledValue<MailAddress>>
+    internal val mails: List<LabeledValue<MailAddress>>
         get() = _mails.toList()
 
     private val _events: MutableList<LabeledValue<EventDate>> = mutableListOf()
-    val events: List<LabeledValue<EventDate>>
+    internal val events: List<LabeledValue<EventDate>>
         get() = _events.toList()
 
     private val _postalAddresses: MutableList<LabeledValue<PostalAddress>> = mutableListOf()
-    val postalAddresses: List<LabeledValue<PostalAddress>>
+    internal val postalAddresses: List<LabeledValue<PostalAddress>>
         get() = _postalAddresses.toList()
 
     private val _webAddresses: MutableList<LabeledValue<WebAddress>> = mutableListOf()
-    val webAddresses: List<LabeledValue<WebAddress>>
+    internal val webAddresses: List<LabeledValue<WebAddress>>
         get() = _webAddresses.toList()
 
     private val _groups: MutableList<GroupMembership> = mutableListOf()
-    val groupMemberships: List<GroupMembership>
+    private val _imAddresses: MutableList<LabeledValue<ImAddress>> = mutableListOf()
+    internal val imAddresses: List<LabeledValue<ImAddress>>
+        get() = _imAddresses.toList()
+    internal val groupMemberships: List<GroupMembership>
         get() = _groups.toList()
 
-    fun phone(
+    private val _sipAddresses: MutableList<LabeledValue<SipAddress>> = mutableListOf()
+    internal val sipAddresses: List<LabeledValue<SipAddress>>
+        get() = _sipAddresses.toList()
+
+    private val _relations: MutableList<LabeledValue<Relation>> = mutableListOf()
+    internal val relations: List<LabeledValue<Relation>>
+        get() = _relations.toList()
+
+    public fun phone(
         number: String,
         label: Label
     ) {
         _phones.add(LabeledValue(PhoneNumber(number), label))
     }
 
-    fun mail(
+    public fun mail(
         address: String,
         label: Label
     ) {
         _mails.add(LabeledValue(MailAddress(address), label))
     }
 
-    fun event(dayOfMonth: Int, month: Int, year: Int? = null, label: Label) {
+    public fun event(dayOfMonth: Int, month: Int, year: Int? = null, label: Label) {
         _events.add(
             LabeledValue(EventDate(dayOfMonth = dayOfMonth, month = month, year = year), label)
         )
     }
 
-    fun postalAddress(
+    public fun postalAddress(
         street: String,
         poBox: String = "",
         neighborhood: String = "",
@@ -90,7 +102,7 @@ data class MutableContactBuilder(
         )
     }
 
-    fun postalAddress(fullAddress: String, label: Label) {
+    public fun postalAddress(fullAddress: String, label: Label) {
         _postalAddresses.add(
             LabeledValue(
                 value = PostalAddress(fullAddress),
@@ -99,13 +111,27 @@ data class MutableContactBuilder(
         )
     }
 
-    fun webAddress(address: String, label: Label) {
+    public fun webAddress(address: Uri, label: Label) {
         _webAddresses.add(LabeledValue(WebAddress(address), label))
     }
 
-    fun groupMembership(groupId: Long) {
+    public fun groupMembership(groupId: Long) {
         _groups.add(
             GroupMembership(groupId)
         )
+    }
+
+    public fun imAddress(address: String, protocol: String, label: Label) {
+        _imAddresses.add(
+            LabeledValue(ImAddress(raw = address, protocol = protocol), label)
+        )
+    }
+
+    public fun relation(name: String, label: Label) {
+        _relations.add(LabeledValue(Relation(name = name), label))
+    }
+
+    public fun sipAddress(address: String, label: Label) {
+        _sipAddresses.add(LabeledValue(SipAddress(address), label))
     }
 }

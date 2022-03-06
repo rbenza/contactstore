@@ -3,17 +3,24 @@ package com.alexstyl.contactstore.test
 import android.provider.ContactsContract
 import com.alexstyl.contactstore.Contact
 import com.alexstyl.contactstore.ContactColumn
-import com.alexstyl.contactstore.ContactOperation
+import com.alexstyl.contactstore.ContactGroup
+import com.alexstyl.contactstore.ContactOperation.*
 import com.alexstyl.contactstore.ContactPredicate
 import com.alexstyl.contactstore.ContactStore
+import com.alexstyl.contactstore.DisplayNameStyle
 import com.alexstyl.contactstore.ExperimentalContactStoreApi
+import com.alexstyl.contactstore.FetchRequest
+import com.alexstyl.contactstore.GroupsPredicate
+import com.alexstyl.contactstore.ImmutableContactGroup
 import com.alexstyl.contactstore.MutableContact
+import com.alexstyl.contactstore.MutableContactGroup
 import com.alexstyl.contactstore.PartialContact
 import com.alexstyl.contactstore.SaveRequest
 import com.alexstyl.contactstore.containsColumn
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 
 /**
  * An implementation of [ContactStore] usable for testing. The store holds a snapshot of contacts
@@ -28,50 +35,105 @@ import kotlinx.coroutines.flow.map
  * Do not use this class as a source of truth of how a real device will behave.
  */
 @ExperimentalContactStoreApi
-class TestContactStore(
-    contactsSnapshot: List<StoredContact> = emptyList()
+public class TestContactStore(
+    contactsSnapshot: List<StoredContact> = emptyList(),
+    contactGroupsSnapshot: List<StoredContactGroup> = emptyList(),
 ) : ContactStore {
 
-    private val snapshot: MutableStateFlow<List<StoredContact>> = MutableStateFlow(contactsSnapshot)
+    private val contacts: MutableStateFlow<List<StoredContact>> = MutableStateFlow(contactsSnapshot)
+    private val contactGroups: MutableStateFlow<List<StoredContactGroup>> =
+        MutableStateFlow(contactGroupsSnapshot)
 
-    override suspend fun execute(request: SaveRequest) {
-        request.requests.forEach { operation ->
-            when (operation) {
-                is ContactOperation.Delete -> deleteContact(withId = operation.contactId)
-                is ContactOperation.Insert -> insertContact(operation.contact)
-                is ContactOperation.Update -> updateContact(operation.contact)
+    override fun execute(builder: SaveRequest.() -> Unit) {
+        val saveRequest = SaveRequest().apply(builder)
+        runBlocking {
+            saveRequest.requests.forEach { operation ->
+                when (operation) {
+                    is Delete -> deleteContact(withId = operation.contactId)
+                    is Insert -> insertContact(operation.contact)
+                    is Update -> updateContact(operation.contact)
+                    is DeleteGroup -> deleteContactGroup(operation.groupId)
+                    is InsertGroup -> insertGroup(operation.group)
+                    is UpdateGroup -> updateGroup(operation.group)
+                }
             }
         }
     }
 
+    private suspend fun updateGroup(group: MutableContactGroup) {
+        val currentGroup = contactGroups.value
+            .find { it.groupId == group.groupId } ?: return
+        val updatedGroup = currentGroup.copy(
+            title = group.title,
+            note = group.note
+        )
+        val newList = contactGroups.value.toMutableList()
+            .replace(updatedGroup) {
+                it.groupId == group.groupId
+            }
+            .toList()
+        contactGroups.emit(newList)
+    }
+
     private suspend fun deleteContact(withId: Long) {
-        snapshot.emit(
-            snapshot.value.dropWhile { it.contactId == withId }
+        contacts.emit(
+            contacts.value.dropWhile { it.contactId == withId }
+        )
+    }
+
+    private suspend fun deleteContactGroup(withId: Long) {
+        contactGroups.emit(
+            contactGroups.value.dropWhile { it.groupId == withId }
+        )
+    }
+
+    private suspend fun insertGroup(group: MutableContactGroup) {
+        val current = contactGroups.value
+        contactGroups.emit(
+            current.toMutableList().apply {
+                add(
+                    StoredContactGroup(
+                        groupId = group.groupId,
+                        title = group.title,
+                        note = group.note
+                    )
+                )
+            }
         )
     }
 
     private suspend fun insertContact(contact: MutableContact) {
-        val current = snapshot.value
-        snapshot.emit(
+        val current = contacts.value
+        contacts.emit(
             current.toMutableList()
                 .apply {
                     add(
                         StoredContact(
                             contactId = current.size.toLong(),
                             isStarred = contact.isStarred,
-                            prefix = contact.takeIfContains(ContactColumn.Names) { contact.prefix },
-                            firstName = contact.takeIfContains(ContactColumn.Names) { contact.firstName },
-                            middleName = contact.takeIfContains(ContactColumn.Names) { contact.middleName },
-                            lastName = contact.takeIfContains(ContactColumn.Names) { contact.lastName },
-                            suffix = contact.takeIfContains(ContactColumn.Names) { contact.suffix },
-                            phoneticMiddleName = contact.takeIfContains(ContactColumn.Names) { contact.phoneticMiddleName },
-                            phoneticFirstName = contact.takeIfContains(ContactColumn.Names) { contact.phoneticFirstName },
-                            phoneticLastName = contact.takeIfContains(ContactColumn.Names) { contact.phoneticLastName },
+                            prefix = contact.takeIfContains(ContactColumn.Names) { contact.prefix }
+                                .orEmpty(),
+                            firstName = contact.takeIfContains(ContactColumn.Names) { contact.firstName }
+                                .orEmpty(),
+                            middleName = contact.takeIfContains(ContactColumn.Names) { contact.middleName }
+                                .orEmpty(),
+                            lastName = contact.takeIfContains(ContactColumn.Names) { contact.lastName }
+                                .orEmpty(),
+                            suffix = contact.takeIfContains(ContactColumn.Names) { contact.suffix }
+                                .orEmpty(),
+                            phoneticMiddleName = contact.takeIfContains(ContactColumn.Names) { contact.phoneticMiddleName }
+                                .orEmpty(),
+                            phoneticFirstName = contact.takeIfContains(ContactColumn.Names) { contact.phoneticFirstName }
+                                .orEmpty(),
+                            phoneticLastName = contact.takeIfContains(ContactColumn.Names) { contact.phoneticLastName }
+                                .orEmpty(),
                             phoneticNameStyle = contact.takeIfContains(ContactColumn.Names) { contact.phoneticNameStyle }
                                 ?: ContactsContract.PhoneticNameStyle.UNDEFINED,
                             imageData = contact.takeIfContains(ContactColumn.Image) { contact.imageData },
-                            organization = contact.takeIfContains(ContactColumn.Organization) { contact.organization },
-                            jobTitle = contact.takeIfContains(ContactColumn.Organization) { contact.jobTitle },
+                            organization = contact.takeIfContains(ContactColumn.Organization) { contact.organization }
+                                .orEmpty(),
+                            jobTitle = contact.takeIfContains(ContactColumn.Organization) { contact.jobTitle }
+                                .orEmpty(),
                             webAddresses = contact.takeIfContains(ContactColumn.WebAddresses) { contact.webAddresses }
                                 .orEmpty(),
                             phones = contact.takeIfContains(ContactColumn.Phones) { contact.phones }
@@ -83,7 +145,8 @@ class TestContactStore(
                             postalAddresses = contact.takeIfContains(ContactColumn.PostalAddresses) { contact.postalAddresses }
                                 .orEmpty(),
                             note = contact.takeIfContains(ContactColumn.Note) { contact.note },
-                            nickname = contact.takeIfContains(ContactColumn.Nickname) { contact.nickname },
+                            nickname = contact.takeIfContains(ContactColumn.Nickname) { contact.nickname }
+                                .orEmpty(),
                             groups = contact
                                 .takeIfContains(ContactColumn.GroupMemberships) { contact.groups }
                                 .orEmpty(),
@@ -105,7 +168,7 @@ class TestContactStore(
     }
 
     private suspend fun updateContact(contact: MutableContact) {
-        val currentContact = snapshot.value
+        val currentContact = contacts.value
             .find { it.contactId == contact.contactId } ?: return
         val updatedContact = currentContact.copy(
             firstName = contact.takeIfContains(ContactColumn.Names) { contact.firstName }
@@ -143,7 +206,8 @@ class TestContactStore(
                 ?: currentContact.events,
             postalAddresses = contact.takeIfContains(ContactColumn.PostalAddresses) { contact.postalAddresses }
                 ?: currentContact.postalAddresses,
-            note = contact.takeIfContains(ContactColumn.Note) { contact.note } ?: currentContact.note,
+            note = contact.takeIfContains(ContactColumn.Note) { contact.note }
+                ?: currentContact.note,
             nickname = contact.takeIfContains(ContactColumn.Nickname) { contact.nickname }
                 ?: currentContact.nickname,
             groups = contact
@@ -152,12 +216,12 @@ class TestContactStore(
             fullNameStyle = contact.takeIfContains(ContactColumn.Names) { contact.fullNameStyle }
                 ?: currentContact.fullNameStyle
         )
-        val newList = snapshot.value.toMutableList()
+        val newList = contacts.value.toMutableList()
             .replace(updatedContact) {
                 it.contactId == contact.contactId
             }
             .toList()
-        snapshot.emit(newList)
+        contacts.emit(newList)
     }
 
     private fun <T> List<T>.replace(newValue: T, block: (T) -> Boolean): List<T> {
@@ -168,14 +232,38 @@ class TestContactStore(
 
     override fun fetchContacts(
         predicate: ContactPredicate?,
-        columnsToFetch: List<ContactColumn>
-    ): Flow<List<Contact>> {
-        return snapshot
-            .map { contacts ->
-                contacts.filter { current ->
-                    matchesPredicate(contact = current, predicate)
-                }.keepColumns(columnsToFetch)
+        columnsToFetch: List<ContactColumn>,
+        displayNameStyle: DisplayNameStyle
+    ): FetchRequest<List<Contact>> {
+        return FetchRequest(
+            contacts
+                .map { contacts ->
+                    contacts.filter { current ->
+                        matchesPredicate(contact = current, predicate)
+                    }.keepColumns(columnsToFetch)
+                }
+        )
+    }
+
+    override fun fetchContactGroups(predicate: GroupsPredicate?): FetchRequest<List<ContactGroup>> {
+        val flow = combine(contactGroups.map { groups ->
+            groups.filter { group ->
+                matchesPredicate(group, predicate)
             }
+        }, contacts) { groups, contacts ->
+            groups
+                .map { group ->
+                    ImmutableContactGroup(
+                        groupId = group.groupId,
+                        title = group.title,
+                        note = group.note,
+                        contactCount = contacts.count { contact ->
+                            contact.groups.any { membership -> membership.groupId == group.groupId }
+                        }
+                    )
+                }
+        }
+        return FetchRequest(flow)
     }
 
     private fun matchesPredicate(
@@ -186,7 +274,7 @@ class TestContactStore(
         return when (predicate) {
             is ContactPredicate.ContactLookup -> matchesContact(predicate, contact)
             is ContactPredicate.MailLookup -> {
-                val query = predicate.mailAddress.raw
+                val query = predicate.mailAddress
                 return contact.mails.any { it.value.raw.startsWith(query, ignoreCase = true) }
             }
             is ContactPredicate.NameLookup -> matchesName(predicate, contact)
@@ -194,20 +282,37 @@ class TestContactStore(
         }
     }
 
+    private fun matchesPredicate(
+        group: StoredContactGroup,
+        predicate: GroupsPredicate?
+    ): Boolean {
+        if (predicate == null) return group.isDeleted.not()
+        return when (predicate) {
+            is GroupsPredicate.GroupLookup -> {
+                val passesIdCheck = predicate.inGroupIds == null || predicate.inGroupIds.orEmpty()
+                    .contains(group.groupId)
+                val passedDeletedCheck = if (predicate.includeDeleted) {
+                    true
+                } else {
+                    group.isDeleted.not()
+                }
+                passesIdCheck && passedDeletedCheck
+            }
+        }
+    }
+
     private fun matchesContact(
         predicate: ContactPredicate.ContactLookup,
         contact: StoredContact
     ): Boolean {
-        val isInIds = predicate.inContactIds.orEmpty().contains(contact.contactId)
-        val isFavorite = predicate.isFavorite?.let { contact.isStarred == it } ?: true
-        return isInIds && isFavorite
+        return predicate.contactId == contact.contactId
     }
 
     private fun matchesPhone(
         predicate: ContactPredicate.PhoneLookup,
         contact: StoredContact
     ): Boolean {
-        val query = predicate.phoneNumber.raw
+        val query = predicate.phoneNumber
         return contact.phones.any { it.value.raw.startsWith(query, ignoreCase = true) }
     }
 
@@ -216,12 +321,12 @@ class TestContactStore(
         contact: StoredContact
     ): Boolean {
         val query = predicate.partOfName
-        val matchesName = contact.prefix.orEmpty().startsWith(query, ignoreCase = true)
-                || contact.firstName.orEmpty().startsWith(query, ignoreCase = true)
-                || contact.middleName.orEmpty().startsWith(query, ignoreCase = true)
-                || contact.lastName.orEmpty().startsWith(query, ignoreCase = true)
-                || contact.suffix.orEmpty().startsWith(query, ignoreCase = true)
-        val matchesNick = contact.nickname.orEmpty().startsWith(query, ignoreCase = true)
+        val matchesName = contact.prefix.startsWith(query, ignoreCase = true)
+                || contact.firstName.startsWith(query, ignoreCase = true)
+                || contact.middleName.startsWith(query, ignoreCase = true)
+                || contact.lastName.startsWith(query, ignoreCase = true)
+                || contact.suffix.startsWith(query, ignoreCase = true)
+        val matchesNick = contact.nickname.startsWith(query, ignoreCase = true)
         return matchesName || matchesNick
     }
 
@@ -230,26 +335,42 @@ class TestContactStore(
             PartialContact(
                 displayName = displayName(it),
                 contactId = it.contactId,
+                lookupKey = null,
                 columns = columnsToFetch,
                 isStarred = it.isStarred,
 
-                firstName = valueIfPresent(columnsToFetch, ContactColumn.Names) { it.firstName },
-                lastName = valueIfPresent(columnsToFetch, ContactColumn.Names) { it.lastName },
-                prefix = valueIfPresent(columnsToFetch, ContactColumn.Names) { it.prefix },
-                middleName = valueIfPresent(columnsToFetch, ContactColumn.Names) { it.middleName },
-                suffix = valueIfPresent(columnsToFetch, ContactColumn.Names) { it.suffix },
+                firstName = valueIfPresent(
+                    columnsToFetch,
+                    ContactColumn.Names
+                ) { it.firstName }.orEmpty(),
+                lastName = valueIfPresent(
+                    columnsToFetch,
+                    ContactColumn.Names
+                ) { it.lastName }.orEmpty(),
+                prefix = valueIfPresent(
+                    columnsToFetch,
+                    ContactColumn.Names
+                ) { it.prefix }.orEmpty(),
+                middleName = valueIfPresent(
+                    columnsToFetch,
+                    ContactColumn.Names
+                ) { it.middleName }.orEmpty(),
+                suffix = valueIfPresent(
+                    columnsToFetch,
+                    ContactColumn.Names
+                ) { it.suffix }.orEmpty(),
                 phoneticFirstName = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.Names
-                ) { it.phoneticFirstName },
+                ) { it.phoneticFirstName }.orEmpty(),
                 phoneticMiddleName = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.Names
-                ) { it.phoneticMiddleName },
+                ) { it.phoneticMiddleName }.orEmpty(),
                 phoneticLastName = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.Names
-                ) { it.phoneticLastName },
+                ) { it.phoneticLastName }.orEmpty(),
                 fullNameStyle = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.Names
@@ -264,11 +385,11 @@ class TestContactStore(
                 organization = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.Organization
-                ) { it.organization },
+                ) { it.organization }.orEmpty(),
                 jobTitle = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.Organization
-                ) { it.jobTitle },
+                ) { it.jobTitle }.orEmpty(),
                 webAddresses = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.WebAddresses
@@ -287,7 +408,10 @@ class TestContactStore(
                     ContactColumn.PostalAddresses
                 ) { it.postalAddresses }.orEmpty(),
                 note = valueIfPresent(columnsToFetch, ContactColumn.Note) { it.note },
-                nickname = valueIfPresent(columnsToFetch, ContactColumn.Nickname) { it.nickname },
+                nickname = valueIfPresent(
+                    columnsToFetch,
+                    ContactColumn.Nickname
+                ) { it.nickname }.orEmpty(),
                 groups = valueIfPresent(
                     columnsToFetch,
                     ContactColumn.GroupMemberships
@@ -299,25 +423,23 @@ class TestContactStore(
     private fun displayName(it: StoredContact): String {
         return with(it) {
             buildString {
-                prefix?.let { append(it) }
+                append(prefix)
 
                 if (fullNameStyle == ContactsContract.FullNameStyle.UNDEFINED || fullNameStyle == ContactsContract.FullNameStyle.WESTERN) {
-                    firstName?.let { appendWord(it) }
-                    middleName?.let { appendWord(it) }
-                    lastName?.let { appendWord(it) }
+                    appendWord(firstName)
+                    appendWord(middleName)
+                    appendWord(lastName)
                 } else if (fullNameStyle == ContactsContract.FullNameStyle.CHINESE) {
-                    lastName?.let { appendWord(it) }
-                    middleName?.let { appendWord(it, separator = "") }
-                    firstName?.let { appendWord(it, separator = "") }
+                    appendWord(lastName)
+                    appendWord(middleName, separator = "")
+                    appendWord(firstName, separator = "")
                 } else {
-                    lastName?.let { appendWord(it) }
-                    middleName?.let { appendWord(it) }
-                    firstName?.let { appendWord(it) }
+                    appendWord(lastName)
+                    appendWord(middleName)
+                    appendWord(firstName)
                 }
 
-                suffix?.let {
-                    appendWord(it, separator = ", ")
-                }
+                appendWord(suffix, separator = ", ")
             }
         }
     }

@@ -1,17 +1,11 @@
 package com.alexstyl.contactstore
 
-import com.alexstyl.contactstore.ContactColumn.LinkedAccountValues
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 @Suppress("unused") // used for scoping
 internal fun <T> Contact.requireColumn(column: ContactColumn, property: T): RequiredReadColumn<T> {
     return RequiredReadColumn(column, property)
-}
-
-@Suppress("unused") //used for scoping
-internal fun <T> Contact.requireAnyLinkedAccountColumn(property: T): RequiredReadColumnA<T> {
-    return RequiredReadColumnA(property)
 }
 
 internal class RequiredReadColumn<T>(
@@ -22,22 +16,7 @@ internal class RequiredReadColumn<T>(
         return if (contact.containsColumn(column)) {
             value
         } else {
-            error("Tried to get ${property.name}, but the contact did not contain column $column")
-        }
-    }
-}
-
-internal class RequiredReadColumnA<T>(
-    private val value: T
-) {
-    operator fun getValue(contact: Contact, property: KProperty<*>): T {
-        return if (contact.columns.any { it is LinkedAccountValues }) {
-            value
-        } else {
-            error(
-                "Tried to get ${property.name}, but the contact did not contain any linked" +
-                        " account columns"
-            )
+            error("Tried to get ${property.name}, but the contact was missing the [${column.javaClass.simpleName}] column")
         }
     }
 }
@@ -54,7 +33,7 @@ internal fun <T> Contact.readWriteField(
 
         override fun getValue(thisRef: Contact, property: KProperty<*>): T {
             if (thisRef.containsColumn(requiredColumn)) return mutableValue
-            error("Tried to get ${property.name}, but the contact did not contain column $requiredColumn")
+            error("Tried to get ${property.name}, but the contact did not contain column ${requiredColumn.javaClass.simpleName}")
         }
 
         override fun setValue(thisRef: Contact, property: KProperty<*>, value: T) {

@@ -12,9 +12,14 @@ ext {
 apply from: "${rootProject.projectDir}/scripts/publish-module.gradle"
 
 android {
-    kotlinOptions.useIR = true
+    kotlinOptions {
+        jvmTarget = javaVersion
+        useIR = true
+        freeCompilerArgs = [
+                "-Xexplicit-api=strict"
+        ]
+    }
     compileSdkVersion androidCompileSdkVersion
-    buildToolsVersion androidBuildToolsVersion
 
     defaultConfig {
         minSdkVersion androidMinSdkVersion
@@ -40,9 +45,18 @@ android {
     }
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs += ["../library/src/androidTest/java/com/alexstyl/contactstore/test"]
+        }
+    }
+}
+
 dependencies {
     implementation project(':library')
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion"
+    implementation "junit:junit:$junitVersion"
     testImplementation "org.assertj:assertj-core:$assertjVersion"
-    testImplementation "junit:junit:$junitVersion"
+    testImplementation "org.robolectric:robolectric:$robolectricVersion"
 }

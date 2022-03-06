@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,23 +35,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import coil.compose.rememberImagePainter
 import coil.transform.CircleCropTransformation
 import com.alexstyl.contactstore.Contact
-import com.alexstyl.contactstore.ContactColumn.LinkedAccountValues
-import com.alexstyl.contactstore.ContactColumn.Phones
 import com.alexstyl.contactstore.ContactPredicate.ContactLookup
 import com.alexstyl.contactstore.ContactStore
-import com.alexstyl.contactstore.MutableContact
-import com.alexstyl.contactstore.imageUri
-import com.alexstyl.contactstore.sample.ui.setupSystemUi
+import com.alexstyl.contactstore.allContactColumns
+import com.alexstyl.contactstore.getLocalizedString
+import com.alexstyl.contactstore.sample.ui.SetupSystemUi
 import com.alexstyl.contactstore.sample.ui.theme.SampleAppTheme
+import com.alexstyl.contactstore.shareVCardIntent
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -65,21 +62,10 @@ class ContactDetailsActivity : ComponentActivity() {
         val contactId = requireNotNull(intent.extras)
             .getLong(EXTRA_CONTACT_ID)
 
-        val contact = runBlocking {
-            contactStore.fetchContacts(
-                predicate = ContactLookup(listOf(contactId)),
-                columnsToFetch = listOf(
-                    Phones,
-                    LinkedAccountValues("com.whatsapp"),
-                    LinkedAccountValues("org.thoughtcrime.securesms"),
-                    LinkedAccountValues("org.telegram.messenger"),
-                    LinkedAccountValues("com.viber.voip"),
-                    LinkedAccountValues("kik.android"),
-                    LinkedAccountValues("com.google.android.apps.tachyon"),
-                    LinkedAccountValues("ch.threema.app")
-                )
-            ).first().firstOrNull()
-        }
+        val contact = contactStore.fetchContacts(
+            predicate = ContactLookup(contactId),
+            columnsToFetch = allContactColumns()
+        ).blockingGet().firstOrNull()
         if (contact == null) {
             Toast.makeText(this, "Contact not found", Toast.LENGTH_SHORT).show()
             finish()
@@ -88,7 +74,11 @@ class ContactDetailsActivity : ComponentActivity() {
         setContent {
             ContactDetailsScreen(
                 contact = contact,
-                onUpClick = { finish() }
+                onUpClick = { finish() },
+                onShareClick = {
+                    val intent = shareVCardIntent(requireNotNull(contact.lookupKey))
+                    startActivity(intent)
+                }
             )
         }
     }
@@ -96,86 +86,131 @@ class ContactDetailsActivity : ComponentActivity() {
     @Composable
     private fun ContactDetailsScreen(
         contact: Contact,
-        onUpClick: () -> Unit = {}
+        onUpClick: () -> Unit = {},
+        onShareClick: () -> Unit = {},
     ) {
         SampleAppTheme {
-            setupSystemUi()
+            SetupSystemUi()
             Scaffold {
-                NavBar(
-                    onUpClick = { onUpClick() }
-                )
-                LazyColumn(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp)
-                ) {
-                    item {
-                        Spacer(Modifier.height(40.dp))
-                        Image(
-                            rememberImagePainter(
-                                contact.imageUri,
-                                builder = {
-                                    transformations(CircleCropTransformation())
-                                        .placeholder(R.drawable.ic_avatar_placeholder)
-                                        .error(R.drawable.ic_avatar_placeholder)
-                                },
-                            ),
-                            modifier = Modifier.size(96.dp),
-                            contentDescription = null
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        Text(
-                            contact.displayName.orEmpty()
-                                .ifEmpty { stringResource(R.string.anonymous) },
-                            style = MaterialTheme.typography.h2
-                        )
-                        Spacer(Modifier.height(40.dp))
-                    }
-                    contact.phones.forEach { phone ->
+                Box {
+                    LazyColumn(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp)
+                    ) {
                         item {
-                            DetailCard(
-                                icon = drawableResource(R.drawable.ic_call),
-                                label = "Phone",
-                                value = phone.value.raw,
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_DIAL).apply {
-                                        data = Uri.parse("tel:${phone.value.raw}")
+                            ContactDetails(contact)
+                        }
+                        contact.phones.forEach { phone ->
+                            item {
+                                Contactable(
+                                    icon = drawableResource(R.drawable.ic_call),
+                                    label = phone.label.getLocalizedString(resources),
+                                    value = phone.value.raw,
+                                    onClick = {
+                                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                                            data = Uri.parse("tel:${phone.value.raw}")
+                                        }
+                                        startActivity(intent)
                                     }
-                                    startActivity(intent)
+                                )
+                            }
+                        }
+                        contact.mails.forEach { mail ->
+                            item {
+                                Contactable(
+                                    icon = drawableResource(R.drawable.ic_mail),
+                                    label = mail.label.getLocalizedString(resources),
+                                    value = mail.value.raw,
+                                    onClick = {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = Uri.parse("mailto:${mail.value.raw}")
+                                        }
+                                        startActivity(intent)
+                                    }
+                                )
+                            }
+                        }
+
+                        contact.events.forEach { event ->
+                            item {
+                                val date = event.value
+                                val value = if (date.year == null) {
+                                    "${date.dayOfMonth}/${date.month}"
+                                } else {
+                                    "${date.dayOfMonth}/${date.month}/${date.year}"
                                 }
-                            )
+                                Contactable(
+                                    icon = drawableResource(R.drawable.ic_event),
+                                    label = event.label.getLocalizedString(resources),
+                                    value = value,
+                                    onClick = {
+
+                                    }
+                                )
+                            }
+                        }
+
+                        contact.customDataItems.forEach { value ->
+                            item {
+                                Contactable(
+                                    icon = value.icon,
+                                    label = value.summary,
+                                    value = value.detail,
+                                    onClick = {
+                                        runCatching {
+                                            val intent = Intent(
+                                                Intent.ACTION_VIEW, ContentUris.withAppendedId(
+                                                    ContactsContract.Data.CONTENT_URI, value.id
+                                                )
+                                            )
+                                            startActivity(intent)
+                                        }.exceptionOrNull()?.run {
+                                            Toast.makeText(
+                                                this@ContactDetailsActivity,
+                                                message ?: "There was an error", Toast.LENGTH_LONG
+                                            ).show()
+                                            printStackTrace()
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
 
-                    contact.linkedAccountValues.forEach { value ->
-                        item {
-                            DetailCard(
-                                icon = value.icon,
-                                label = value.summary,
-                                value = value.detail,
-                                onClick = {
-                                    kotlin.runCatching {
-                                        val intent = Intent(
-                                            Intent.ACTION_VIEW, ContentUris.withAppendedId(
-                                                ContactsContract.Data.CONTENT_URI, value.id
-                                            )
-                                        )
-                                        startActivity(intent)
-                                    }.exceptionOrNull()?.run {
-                                        Toast.makeText(
-                                            this@ContactDetailsActivity,
-                                            message ?: "There was an error", Toast.LENGTH_LONG
-                                        ).show()
-                                        printStackTrace()
-                                    }
-                                }
-                            )
-                        }
-                    }
+                    NavBar(
+                        onUpClick = onUpClick,
+                        onShareClick = onShareClick
+                    )
                 }
             }
         }
+    }
+
+    @Composable
+    private fun ContactDetails(contact: Contact) {
+        Spacer(Modifier.height(40.dp))
+        Image(
+            rememberImagePainter(
+                data = contact.imageData?.raw,
+                builder = {
+                    transformations(CircleCropTransformation())
+                        .crossfade(true)
+                        .placeholder(R.drawable.ic_avatar_placeholder)
+                        .error(R.drawable.ic_avatar_placeholder)
+                },
+            ),
+            modifier = Modifier.size(120.dp),
+            contentDescription = null
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            contact.displayName.orEmpty()
+                .ifEmpty { stringResource(R.string.anonymous) },
+            style = MaterialTheme.typography.h2
+        )
+        Spacer(Modifier.height(40.dp))
     }
 
     @Composable
@@ -184,7 +219,7 @@ class ContactDetailsActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun DetailCard(onClick: () -> Unit, icon: Drawable?, label: String, value: String) {
+    private fun Contactable(onClick: () -> Unit, icon: Drawable?, label: String, value: String) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -219,37 +254,45 @@ class ContactDetailsActivity : ComponentActivity() {
         }
     }
 
-    @Preview
     @Composable
-    private fun Preview() {
-        ContactDetailsScreen(
-            contact = MutableContact().apply {
-                firstName = "First Name"
-                lastName = "Last Name"
-            }
-        )
-    }
-
-
-    @Composable
-    private fun NavBar(onUpClick: () -> Unit) {
-        Surface(
-            color = Color.Transparent,
-            shape = CircleShape,
-            modifier = Modifier
-                .padding(8.dp)
-                .size(56.dp),
-            onClick = onUpClick,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_back),
-                contentDescription = "Go back",
-                modifier = Modifier.wrapContentSize(
-                    align = Alignment.Center
+    private fun NavBar(onUpClick: () -> Unit, onShareClick: () -> Unit) {
+        Row {
+            Surface(
+                color = Color.Transparent,
+                shape = CircleShape,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .size(56.dp),
+                onClick = onUpClick,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_back),
+                    contentDescription = "Go back",
+                    modifier = Modifier.wrapContentSize(
+                        align = Alignment.Center
+                    )
                 )
-            )
-        }
 
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Surface(
+                color = Color.Transparent,
+                shape = CircleShape,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .size(56.dp),
+                onClick = onShareClick,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_share),
+                    contentDescription = "Share",
+                    modifier = Modifier.wrapContentSize(
+                        align = Alignment.Center
+                    )
+                )
+
+            }
+        }
     }
 
     companion object {

@@ -1,6 +1,5 @@
 package com.alexstyl.contactstore.test
 
-import com.alexstyl.contactstore.ContactFixtures
 import com.alexstyl.contactstore.ContactPredicate.ContactLookup
 import com.alexstyl.contactstore.ContactPredicate.MailLookup
 import com.alexstyl.contactstore.ContactPredicate.NameLookup
@@ -9,14 +8,16 @@ import com.alexstyl.contactstore.ExperimentalContactStoreApi
 import com.alexstyl.contactstore.MailAddress
 import com.alexstyl.contactstore.PartialContact
 import com.alexstyl.contactstore.PhoneNumber
-import com.alexstyl.contactstore.SnapshotFixtures
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 @ExperimentalContactStoreApi
-class PredicateTestContactStoreTest {
+@RunWith(RobolectricTestRunner::class)
+internal class PredicateTestContactStoreTest {
     @Test
     fun `phone lookup`(): Unit = runBlocking {
         val store = TestContactStore(
@@ -26,8 +27,8 @@ class PredicateTestContactStoreTest {
         )
 
         val actual = store.fetchContacts(
-            predicate = PhoneLookup(PhoneNumber("55"))
-        ).first()
+            predicate = PhoneLookup("55")
+        ).blockingGet()
 
         assertThat(actual).containsOnly(CONTACT)
     }
@@ -42,7 +43,7 @@ class PredicateTestContactStoreTest {
 
         val actual = store.fetchContacts(
             predicate = NameLookup("Pao")
-        ).first()
+        ).blockingGet()
 
         assertThat(actual).containsOnly(CONTACT)
     }
@@ -56,8 +57,8 @@ class PredicateTestContactStoreTest {
         )
 
         val actual = store.fetchContacts(
-            predicate = ContactLookup(inContactIds = listOf(0L))
-        ).first()
+            predicate = ContactLookup(contactId = 0L)
+        ).blockingGet()
 
         assertThat(actual).containsOnly(CONTACT)
     }
@@ -71,8 +72,8 @@ class PredicateTestContactStoreTest {
         )
 
         val actual = store.fetchContacts(
-            predicate = MailLookup(MailAddress("hi"))
-        ).first()
+            predicate = MailLookup("hi")
+        ).blockingGet()
 
         assertThat(actual).containsOnly(CONTACT)
     }
@@ -84,6 +85,7 @@ class PredicateTestContactStoreTest {
             displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
             isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
             columns = emptyList(),
+            lookupKey = null,
         )
     }
 }

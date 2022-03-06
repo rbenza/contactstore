@@ -1,5 +1,6 @@
 package com.alexstyl.contactstore
 
+import android.net.Uri
 import com.alexstyl.contactstore.ContactColumn.Events
 import com.alexstyl.contactstore.ContactColumn.Mails
 import com.alexstyl.contactstore.ContactColumn.Names
@@ -10,27 +11,21 @@ import com.alexstyl.contactstore.Label.LocationHome
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
-class UpdatesValuesOfExistingContactContactStoreTest : ContactStoreTestBase() {
+internal class UpdatesValuesOfExistingContactContactStoreTest : ContactStoreTestBase() {
 
     @Test
     fun updatesExistingPhone(): Unit = runBlocking {
         val contactToUpdate = buildStoreContact(Names, Phones) {
             firstName = "Paolo"
             lastName = "Melendez"
-            phones.add(
-                LabeledValue(PhoneNumber("555"), LocationHome)
-            )
+            phone("555", LocationHome)
         }
 
-        val editedContact = contactToUpdate.mutableCopy().apply {
+        val editedContact = contactToUpdate.mutableCopy {
             val id = phones.first().requireId()
             phones.replaceId(
                 id,
-                LabeledValue(
-                    PhoneNumber("666"),
-                    LocationHome,
-                    id
-                )
+                LabeledValue(PhoneNumber("666"), LocationHome, id)
             )
         }
         assertContactUpdated(editedContact)
@@ -41,20 +36,14 @@ class UpdatesValuesOfExistingContactContactStoreTest : ContactStoreTestBase() {
         val contactToUpdate = buildStoreContact(Names, Mails) {
             firstName = "Paolo"
             lastName = "Melendez"
-            mails.add(
-                LabeledValue(MailAddress("mail@mail.com"), LocationHome)
-            )
+            mail("mail@mail.com", LocationHome)
         }
 
-        val editedContact = contactToUpdate.mutableCopy().apply {
+        val editedContact = contactToUpdate.mutableCopy {
             val id = mails.first().requireId()
             mails.replaceId(
                 id,
-                LabeledValue(
-                    MailAddress("mail@mail.eu"),
-                    LocationHome,
-                    id
-                )
+                LabeledValue(MailAddress("mail@mail.eu"), LocationHome, id)
             )
         }
 
@@ -66,20 +55,14 @@ class UpdatesValuesOfExistingContactContactStoreTest : ContactStoreTestBase() {
         val contactToUpdate = buildStoreContact(Names, PostalAddresses) {
             firstName = "Paolo"
             lastName = "Melendez"
-            postalAddresses.add(
-                LabeledValue(PostalAddress("Somewhere Street 53"), LocationHome)
-            )
+            postalAddress("Somewhere Street 53", LocationHome)
         }
 
-        val editedContact = contactToUpdate.mutableCopy().apply {
+        val editedContact = contactToUpdate.mutableCopy {
             val id = postalAddresses.first().requireId()
             postalAddresses.replaceId(
                 id,
-                LabeledValue(
-                    PostalAddress("Somewhere Street 35"),
-                    LocationHome,
-                    id
-                )
+                LabeledValue(PostalAddress("Somewhere Street 35"), LocationHome, id)
             )
         }
 
@@ -92,22 +75,14 @@ class UpdatesValuesOfExistingContactContactStoreTest : ContactStoreTestBase() {
         val contactToUpdate = buildStoreContact(Names, Events) {
             firstName = "Paolo"
             lastName = "Melendez"
-            events.add(
-                LabeledValue(EventDate(1, 1, 2020), Label.DateBirthday)
-            )
+            event(1, 1, 20202, Label.DateBirthday)
         }
 
-        val editedContact = contactToUpdate.mutableCopy().apply {
+        val editedContact = contactToUpdate.mutableCopy {
             val id = events.first().requireId()
             events.replaceId(
                 id,
-                LabeledValue(
-                    EventDate(
-                        1,
-                        1,
-                        2021
-                    ), Label.DateBirthday, id
-                )
+                LabeledValue(EventDate(1, 1, 2021), Label.DateBirthday, id)
             )
         }
 
@@ -119,17 +94,15 @@ class UpdatesValuesOfExistingContactContactStoreTest : ContactStoreTestBase() {
         val contactToUpdate = buildStoreContact(Names, WebAddresses) {
             firstName = "Paolo"
             lastName = "Melendez"
-            webAddresses.add(
-                LabeledValue(WebAddress("https://web/address"), Label.WebsiteProfile)
-            )
+            webAddress(Uri.parse("https://web/address"), Label.WebsiteProfile)
         }
 
-        val editedContact = contactToUpdate.mutableCopy().apply {
+        val editedContact = contactToUpdate.mutableCopy {
             val id = webAddresses.first().requireId()
             webAddresses.replaceId(
                 id,
                 LabeledValue(
-                    WebAddress("https://web/address.com"),
+                    WebAddress(Uri.parse("https://web/address.com")),
                     Label.WebsiteProfile,
                     id
                 )

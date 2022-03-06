@@ -1,19 +1,22 @@
 package com.alexstyl.contactstore
 
 import com.alexstyl.contactstore.ContactOperation.Delete
+import com.alexstyl.contactstore.ContactOperation.DeleteGroup
 import com.alexstyl.contactstore.ContactOperation.Insert
+import com.alexstyl.contactstore.ContactOperation.InsertGroup
 import com.alexstyl.contactstore.ContactOperation.Update
+import com.alexstyl.contactstore.ContactOperation.UpdateGroup
 
 /**
  * A [SaveRequest] is responsible of keeping track of any contact modifications you want to perform.
  *
  * @see [ContactStore.execute]
  */
-class SaveRequest {
+public class SaveRequest {
 
     private val _requests = mutableListOf<ContactOperation>()
 
-    val requests: List<ContactOperation>
+    public val requests: List<ContactOperation>
         get() = _requests.toList()
 
     /**
@@ -24,16 +27,27 @@ class SaveRequest {
      *
      * This is done to prevent accidental value overrides.
      */
-    fun update(mutableContact: MutableContact) {
+    public fun update(mutableContact: MutableContact) {
         _requests.add(Update(mutableContact))
     }
 
-    fun insert(mutableContact: MutableContact) {
-        _requests.add(Insert(mutableContact))
+    /**
+     * Insert the contact into the specified [InternetAccount].
+     */
+    public fun insert(mutableContact: MutableContact, intoAccount: InternetAccount? = null) {
+        _requests.add(Insert(intoAccount, mutableContact))
     }
 
-    fun delete(contactId: Long) {
+    public fun insertGroup(mutableContactGroup: MutableContactGroup) {
+        _requests.add(InsertGroup(mutableContactGroup))
+    }
+
+    public fun delete(contactId: Long) {
         _requests.add(Delete(contactId))
+    }
+
+    public fun deleteGroup(groupId: Long) {
+        _requests.add(DeleteGroup(groupId))
     }
 
     override fun equals(other: Any?): Boolean {
@@ -53,5 +67,9 @@ class SaveRequest {
 
     override fun toString(): String {
         return "SaveRequest(_requests=$_requests)"
+    }
+
+    public fun updateGroup(mutableContactGroup: MutableContactGroup) {
+        _requests.add(UpdateGroup(mutableContactGroup))
     }
 }

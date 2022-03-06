@@ -2,9 +2,9 @@ package com.alexstyl.contactstore
 
 import android.accounts.AccountManager
 import android.content.Context
+import androidx.annotation.WorkerThread
 import com.alexstyl.contactstore.ContactStore.Companion.newInstance
 import com.alexstyl.contactstore.utils.DateTimeFormatParser
-import kotlinx.coroutines.flow.Flow
 
 /**
  * A store that can be used to retrieve information about the contacts of the device (via [fetchContacts]) or edit them (via [execute]).
@@ -12,49 +12,77 @@ import kotlinx.coroutines.flow.Flow
  * @see [newInstance]
  *
  */
-interface ContactStore {
-
-    suspend fun execute(request: SaveRequest)
+public interface ContactStore {
 
     /**
-     * Returns a [Flow] that emits the contacts of the device matching the given [predicate].
+     * Executes all the operations in the given [SaveRequest].
      *
-     * The Flow will continue emitting once a change is detected (i.e. an other app adds a new contact or a Content Provider syncs a new account) and never completes.
-     * Changes caused by other apps might take some seconds to register, as the underlying implementation uses Android's ContentObserver.
+     * This function is blocking. It will complete as soon as all operations are processed.
+     *
+     */
+    @WorkerThread
+    public fun execute(builder: SaveRequest.() -> Unit)
+
+    /**
+     * Returns a [FetchRequest] that emits all contacts matching the given [predicate] when collected.
      *
      * @param predicate The conditions that a contact need to meet in order to be fetched
      * @param columnsToFetch The columns of the contact you need to be fetched
+     * @param displayNameStyle The preferred style for the [Contact.displayName] to be returned. The fetched contacts' sorting order will match this option.
      */
-    fun fetchContacts(
+    public fun fetchContacts(
         predicate: ContactPredicate? = null,
-        columnsToFetch: List<ContactColumn> = emptyList()
-    ): Flow<List<Contact>>
+        columnsToFetch: List<ContactColumn> = emptyList(),
+        displayNameStyle: DisplayNameStyle = DisplayNameStyle.Primary
+    ): FetchRequest<List<Contact>>
 
-    companion object {
+    /**
+     * Returns a [FetchRequest] that emits all contact groups matching the given [predicate] when collected.
+     *
+     * @param predicate The conditions that a contact group need to meet in order to be fetched
+     */
+    public fun fetchContactGroups(
+        predicate: GroupsPredicate? = null
+    ): FetchRequest<List<ContactGroup>>
+
+    public companion object {
         /**
          * The entry point to ContactStore
          */
-        fun newInstance(context: Context): ContactStore {
+        public fun newInstance(context: Context): ContactStore {
             val contentResolver = context.contentResolver
             val resources = context.resources
             val contactsQueries = ContactQueries(
                 contentResolver = contentResolver,
                 dateParser = DateTimeFormatParser(),
+                resources = context.resources,
                 accountInfoResolver = AccountInfoResolver(
                     context,
                     context.getSystemService(Context.ACCOUNT_SERVICE) as AccountManager,
                     context.packageManager
+                ),
+                rawContactQueries = RawContactQueries(
+                    contentResolver = contentResolver
                 )
+            )
+            val groupQueries = ContactGroupQueries(
+                contentResolver = contentResolver
             )
             return AndroidContactStore(
                 contentResolver = contentResolver,
-                newContactOperationsFactory = NewContactOperationsFactory(),
+                newContactOperationsFactory = NewContactOperationsFactory(
+                    resources
+                ),
                 existingContactOperationsFactory = ExistingContactOperationsFactory(
                     contentResolver,
                     resources,
                     contactsQueries
                 ),
-                contactQueries = contactsQueries,
+                contactGroupOperations = GroupOperationsFactory(),
+                fetchRequestFactory = FetchRequestFactory(
+                    contactQueries = contactsQueries,
+                    groupQueries = groupQueries,
+                )
             )
         }
     }

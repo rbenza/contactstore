@@ -1,7 +1,7 @@
 package com.alexstyl.contactstore.test
 
+import android.net.Uri
 import com.alexstyl.contactstore.ContactColumn
-import com.alexstyl.contactstore.ContactFixtures
 import com.alexstyl.contactstore.ExperimentalContactStoreApi
 import com.alexstyl.contactstore.GroupMembership
 import com.alexstyl.contactstore.ImageData
@@ -11,15 +11,18 @@ import com.alexstyl.contactstore.MailAddress
 import com.alexstyl.contactstore.Note
 import com.alexstyl.contactstore.PartialContact
 import com.alexstyl.contactstore.PostalAddress
-import com.alexstyl.contactstore.SnapshotFixtures
 import com.alexstyl.contactstore.WebAddress
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 @ExperimentalContactStoreApi
-class ColumnTestContactStoreTest {
+@RunWith(RobolectricTestRunner::class)
+internal class ColumnTestContactStoreTest {
     @Test
     fun `fetches minimum details from snapshot`(): Unit = runBlocking {
         val store = TestContactStore(
@@ -28,14 +31,15 @@ class ColumnTestContactStoreTest {
             )
         )
 
-        val actual = store.fetchContacts().first()
+        val actual = store.fetchContacts().blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = emptyList(),
+                lookupKey = null,
             )
         )
     }
@@ -50,9 +54,9 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Names)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
@@ -62,7 +66,8 @@ class ColumnTestContactStoreTest {
                 firstName = "Paolo",
                 middleName = "Mid",
                 lastName = "Melendez",
-                suffix = "Suffix"
+                suffix = "Suffix",
+                lookupKey = null,
             )
         )
     }
@@ -77,15 +82,16 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Phones)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = listOf(ContactColumn.Phones),
-                phones = ContactFixtures.PAOLO_MELENDEZ.phones
+                phones = ContactFixtures.PAOLO_MELENDEZ.phones,
+                lookupKey = null,
             )
         )
     }
@@ -100,9 +106,9 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Mails)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
@@ -110,7 +116,8 @@ class ColumnTestContactStoreTest {
                 columns = listOf(ContactColumn.Mails),
                 mails = listOf(
                     LabeledValue(MailAddress("hi@mail.com"), Label.LocationHome)
-                )
+                ),
+                lookupKey = null,
             )
         )
     }
@@ -125,16 +132,17 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Organization)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = listOf(ContactColumn.Organization),
                 organization = "Organization",
-                jobTitle = "Job Title"
+                jobTitle = "Job Title",
+                lookupKey = null,
             )
         )
     }
@@ -149,15 +157,16 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Image)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = listOf(ContactColumn.Image),
-                imageData = ImageData("imagedata".toByteArray())
+                imageData = ImageData("imagedata".toByteArray()),
+                lookupKey = null,
             )
         )
     }
@@ -172,15 +181,16 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Note)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = listOf(ContactColumn.Note),
-                note = Note("note")
+                note = Note("note"),
+                lookupKey = null,
             )
         )
     }
@@ -195,9 +205,9 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.PostalAddresses)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
@@ -205,7 +215,8 @@ class ColumnTestContactStoreTest {
                 columns = listOf(ContactColumn.PostalAddresses),
                 postalAddresses = listOf(
                     LabeledValue(PostalAddress("SomeStreet 55"), Label.LocationHome)
-                )
+                ),
+                lookupKey = null,
             )
         )
     }
@@ -220,15 +231,16 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.Nickname)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = listOf(ContactColumn.Nickname),
-                nickname = "Nickname"
+                nickname = "Nickname",
+                lookupKey = null,
             )
         )
     }
@@ -243,17 +255,18 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.WebAddresses)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
                 isStarred = ContactFixtures.PAOLO_MELENDEZ.isStarred,
                 columns = listOf(ContactColumn.WebAddresses),
                 webAddresses = listOf(
-                    LabeledValue(WebAddress("www.web.com"), Label.WebsiteHomePage)
-                )
+                    LabeledValue(WebAddress(Uri.parse("www.web.com")), Label.WebsiteHomePage)
+                ),
+                lookupKey = null,
             )
         )
     }
@@ -268,9 +281,9 @@ class ColumnTestContactStoreTest {
 
         val actual = store.fetchContacts(
             columnsToFetch = listOf(ContactColumn.GroupMemberships)
-        ).first()
+        ).blockingGet()
 
-        Assertions.assertThat(actual).containsOnly(
+        assertThat(actual).containsOnly(
             PartialContact(
                 contactId = ContactFixtures.PAOLO_MELENDEZ.contactId,
                 displayName = ContactFixtures.PAOLO_MELENDEZ.displayName,
@@ -278,7 +291,8 @@ class ColumnTestContactStoreTest {
                 columns = listOf(ContactColumn.GroupMemberships),
                 groups = listOf(
                     GroupMembership(groupId = 10)
-                )
+                ),
+                lookupKey = null,
             )
         )
     }

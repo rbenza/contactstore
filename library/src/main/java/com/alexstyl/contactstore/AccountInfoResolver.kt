@@ -16,7 +16,7 @@ import android.provider.ContactsContract
 import android.util.Xml
 import org.xmlpull.v1.XmlPullParser
 
-class AccountInfoResolver(
+internal class AccountInfoResolver(
     private val context: Context,
     private val accountManager: AccountManager,
     private val packageManager: PackageManager,
@@ -75,8 +75,8 @@ class AccountInfoResolver(
                         returningList.add(
                             LinkedAccountMimeType(
                                 mimetype = requireNotNull(mimeType),
-                                summaryColumn = requireNotNull(summaryColumn),
-                                detailColumn = requireNotNull(detailColumn),
+                                summaryColumn = summaryColumn.orEmpty(),
+                                detailColumn = detailColumn.orEmpty(),
                                 icon = icon,
                                 packageName = packageName
                             )
@@ -160,7 +160,7 @@ class AccountInfoResolver(
          * platforms. If you modify this also update the corresponding list in
          * ContactsProvider/PhotoPriorityResolver
          */
-        val METADATA_CONTACTS_NAMES = arrayOf(
+        val METADATA_CONTACTS_NAMES = listOf(
             "android.provider.ALTERNATE_CONTACTS_STRUCTURE",
             "android.provider.CONTACTS_STRUCTURE"
         )
