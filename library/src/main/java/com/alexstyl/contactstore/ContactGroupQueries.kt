@@ -40,7 +40,7 @@ internal class ContactGroupQueries(
                 projection = arrayOf(
                     Groups._ID,
                     Groups.TITLE,
-                    Groups.SUMMARY_COUNT,
+                    Groups.SUMMARY_WITH_PHONES,
                     Groups.NOTES
                 ),
                 selection = selection(from = predicate)
