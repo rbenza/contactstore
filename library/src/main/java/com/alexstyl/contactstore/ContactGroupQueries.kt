@@ -8,6 +8,7 @@ import com.alexstyl.contactstore.utils.mapEachRow
 import com.alexstyl.contactstore.utils.runQueryFlow
 import com.alexstyl.contactstore.utils.valueIn
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 
 internal class ContactGroupQueries(
@@ -20,7 +21,7 @@ internal class ContactGroupQueries(
             .mapEachRow {
                 val id = it[Groups._ID].toLong()
                 val title = it[Groups.TITLE]
-                val contactCount = it[Groups.SUMMARY_COUNT].toInt()
+                val contactCount = it[Groups.SUMMARY_WITH_PHONES].toInt()
                 val note = it[Groups.NOTES]
                 ImmutableContactGroup(
                     groupId = id,
@@ -29,6 +30,7 @@ internal class ContactGroupQueries(
                     note = note,
                 )
             }
+
     }
 
     private fun query(predicate: GroupsPredicate?): Flow<Cursor?> {
