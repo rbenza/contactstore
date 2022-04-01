@@ -134,13 +134,10 @@ internal class RawContactQueries(
                 val rawContactId = ContentUris.parseId(uri)
                 return ContactsContract.RawContacts.getContactLookupUri(
                     resolver,
-                    ContentUris.withAppendedId(
-                        ContactsContract.RawContacts.CONTENT_URI,
-                        rawContactId
-                    )
+                    ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI, rawContactId)
                 )
             }
-            throw IllegalArgumentException("uri format is unknown")
+            return null
         }
 
         // Legacy Style? Convert to RawContact
@@ -153,6 +150,6 @@ internal class RawContactQueries(
                 ContentUris.withAppendedId(ContactsContract.RawContacts.CONTENT_URI, rawContactId)
             )
         }
-        throw IllegalArgumentException("uri authority is unknown")
+        return null
     }
 }
