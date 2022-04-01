@@ -19,7 +19,7 @@ internal class RawContactQueries(
         val rawContacts = mutableListOf<RawContact>()
 
         contentResolver.runQuery(
-            contentUri = entityUri(contact),
+            contentUri = entityUri(contact) ?: return emptyList(),
             projection = ContactQuery.COLUMNS,
             sortOrder = ContactsContract.Contacts.Entity.RAW_CONTACT_ID
         ).iterate { cursor ->
@@ -37,13 +37,13 @@ internal class RawContactQueries(
         return rawContacts.toList()
     }
 
-    private fun entityUri(forContact: Contact): Uri {
+    private fun entityUri(forContact: Contact): Uri? {
         val contactId = forContact.contactId
-        val contactUri = ensureIsContactUri(
+        val contactUri: Uri? = ensureIsContactUri(
             contentResolver,
             uri = ContactsContract.Contacts.getLookupUri(contactId, forContact.lookupKey?.value)
         )
-        return Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Entity.CONTENT_DIRECTORY)
+        return if (contactUri == null) null else Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Entity.CONTENT_DIRECTORY)
     }
 
     private fun loadDataValues(cursor: Cursor): ContentValues {
