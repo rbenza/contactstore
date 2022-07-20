@@ -14,7 +14,7 @@ ext {
 android {
     kotlinOptions {
         jvmTarget = javaVersion
-        useIR = true
+//        useIR = true
         freeCompilerArgs = [
                 "-Xexplicit-api=strict"
         ]
